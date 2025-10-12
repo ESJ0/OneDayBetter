@@ -126,6 +126,37 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     )
                 }
             }
+
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = { /* Apple Sign In */ },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color(0xFFF5F5F5)
+                )
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Continue with Apple",
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    )
+                }
+            }
         }
 
         Column {
