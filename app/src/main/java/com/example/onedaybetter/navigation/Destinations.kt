@@ -6,6 +6,15 @@ import kotlinx.serialization.Serializable
 object Login
 
 @Serializable
+object Home
+
+@Serializable
+object HabitsList
+
+@Serializable
+object AddHabit
+
+@Serializable
 object GoalsList
 
 @Serializable

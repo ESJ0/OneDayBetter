@@ -1,6 +1,5 @@
 package com.example.onedaybetter.ui.addgoal
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,17 +7,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.GoalRepository
+import com.example.onedaybetter.ui.home.BottomNavigationBar
+import com.example.onedaybetter.ui.theme.OneDayBetterTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddGoalScreen(onGoalAdded: () -> Unit, onNavigateToList: () -> Unit) {
+fun AddGoalScreen(
+    onGoalAdded: () -> Unit,
+    onNavigateToHome: () -> Unit,
+    onNavigateToHabits: () -> Unit,
+    onNavigateToGoals: () -> Unit
+) {
     var goalName by remember { mutableStateOf("") }
     var goalDescription by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("Calendar") }
@@ -28,9 +34,12 @@ fun AddGoalScreen(onGoalAdded: () -> Unit, onNavigateToList: () -> Unit) {
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
-                selectedTab = 1,
+                selectedTab = 2,
                 onTabSelected = { tab ->
-                    if (tab == 0) onNavigateToList()
+                    when(tab) {
+                        0 -> onNavigateToHome()
+                        1 -> onNavigateToHabits()
+                    }
                 }
             )
         }
@@ -173,35 +182,15 @@ fun AddGoalScreen(onGoalAdded: () -> Unit, onNavigateToList: () -> Unit) {
     }
 }
 
+@Preview(showBackground = true)
 @Composable
-fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        IconButton(onClick = { onTabSelected(0) }) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_sort_by_size),
-                contentDescription = "Lista",
-                tint = if (selectedTab == 0) Color.Black else Color.Gray
-            )
-        }
-        IconButton(onClick = { onTabSelected(1) }) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_save),
-                contentDescription = "Guardados",
-                tint = if (selectedTab == 1) Color.Black else Color.Gray
-            )
-        }
-        IconButton(onClick = { onTabSelected(2) }) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_edit),
-                contentDescription = "Editar",
-                tint = if (selectedTab == 2) Color.Black else Color.Gray
-            )
-        }
+fun AddGoalScreenPreview() {
+    OneDayBetterTheme {
+        AddGoalScreen(
+            onGoalAdded = {},
+            onNavigateToHome = {},
+            onNavigateToHabits = {},
+            onNavigateToGoals = {}
+        )
     }
 }
