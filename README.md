@@ -55,37 +55,3 @@ Firebase Cloud Messaging (a implementar):
 Recordatorios automáticos programables
 Notificaciones de motivación
 Alertas de metas próximas a vencer
-
-Estructura del Proyecto
-
-app/src/main/java/com/example/onedaybetter/
-│
-├── data/
-│   ├── Habit.kt              # Modelo de datos para hábitos
-│   ├── HabitType.kt          # Enum de categorías
-│   ├── HabitRepository.kt    # Gestión de hábitos
-│   ├── Goal.kt               # Modelo de datos para metas
-│   └── GoalRepository.kt     # Gestión de metas
-│
-├── navigation/
-│   └── Destinations.kt       # Definición de rutas type-safe
-│
-├── ui/
-│   ├── login/
-│   │   └── LoginScreen.kt    # Pantalla de inicio de sesión
-│   ├── home/
-│   │   └── HomeScreen.kt     # Pantalla principal con calendario
-│   ├── habits/
-│   │   └── HabitsListScreen.kt  # Lista de hábitos
-│   ├── addhabit/
-│   │   └── AddHabitScreen.kt    # Creación de hábitos
-│   ├── goals/
-│   │   └── GoalsListScreen.kt   # Lista de metas
-│   ├── addgoal/
-│   │   └── AddGoalScreen.kt     # Creación de metas
-│   └── theme/
-│       ├── Color.kt
-│       ├── Theme.kt
-│       └── Type.kt
-│
-└── MainActivity.kt           # Activity principal con NavHost
