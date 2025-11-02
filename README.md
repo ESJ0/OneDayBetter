@@ -57,6 +57,7 @@ Notificaciones de motivación
 Alertas de metas próximas a vencer
 
 Estructura del Proyecto
+
 app/src/main/java/com/example/onedaybetter/
 │
 ├── data/
