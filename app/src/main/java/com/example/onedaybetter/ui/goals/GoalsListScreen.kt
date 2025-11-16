@@ -13,14 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Goal
-import com.example.onedaybetter.data.GoalRepository
 import com.example.onedaybetter.ui.home.BottomNavigationBar
-import com.example.onedaybetter.ui.theme.OneDayBetterTheme
 
 @Composable
 fun GoalsListScreen(
@@ -28,8 +27,15 @@ fun GoalsListScreen(
     onNavigateToAddGoal: () -> Unit,
     onNavigateToHabits: () -> Unit
 ) {
-    val repository = GoalRepository.getInstance()
-    val goals = repository.getAllGoals()
+    val context = LocalContext.current
+    val repository = remember { DataRepository.getInstance(context) }
+    var goals by remember { mutableStateOf<List<Goal>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        repository.getAllGoals().collect { goalsList ->
+            goals = goalsList
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -136,36 +142,6 @@ fun GoalCard(goal: Goal) {
                 text = goal.targetDate,
                 fontSize = 12.sp,
                 color = Color.Black
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, name = "Empty State")
-@Composable
-fun GoalsListScreenPreview() {
-    OneDayBetterTheme {
-        GoalsListScreen(
-            onNavigateToHome = {},
-            onNavigateToAddGoal = {},
-            onNavigateToHabits = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "With Data")
-@Composable
-fun GoalsListScreenWithDataPreview() {
-    OneDayBetterTheme {
-        Column {
-            GoalCard(
-                goal = Goal(
-                    id = 1,
-                    name = "Meta de ejemplo",
-                    description = "Texto descriptivo donde se especificará las características de la meta a obtener.",
-                    targetDate = "31/11/2025",
-                    targetValue = "+85"
-                )
             )
         }
     }

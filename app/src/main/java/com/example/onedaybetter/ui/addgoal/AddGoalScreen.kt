@@ -9,13 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.onedaybetter.data.GoalRepository
+import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.ui.home.BottomNavigationBar
-import com.example.onedaybetter.ui.theme.OneDayBetterTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,11 +25,14 @@ fun AddGoalScreen(
     onNavigateToHabits: () -> Unit,
     onNavigateToGoals: () -> Unit
 ) {
+    val context = LocalContext.current
+    val repository = remember { DataRepository.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
     var goalName by remember { mutableStateOf("") }
     var goalDescription by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("Calendar") }
     var expanded by remember { mutableStateOf(false) }
-    val repository = GoalRepository.getInstance()
 
     Scaffold(
         bottomBar = {
@@ -129,7 +132,7 @@ fun AddGoalScreen(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = "Descripcion",
+                text = "Descripción",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground
@@ -140,7 +143,7 @@ fun AddGoalScreen(
             OutlinedTextField(
                 value = goalDescription,
                 onValueChange = { goalDescription = it },
-                placeholder = { Text("Descripcion (opcional)", color = Color.Gray) },
+                placeholder = { Text("Descripción (opcional)", color = Color.Gray) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
@@ -155,13 +158,15 @@ fun AddGoalScreen(
             Button(
                 onClick = {
                     if (goalName.isNotBlank()) {
-                        repository.addGoal(
-                            name = goalName,
-                            description = goalDescription,
-                            targetDate = "31/11/2025",
-                            targetValue = "+85"
-                        )
-                        onGoalAdded()
+                        scope.launch {
+                            repository.addGoal(
+                                name = goalName,
+                                description = goalDescription,
+                                targetDate = "31/11/2025",
+                                targetValue = "+85"
+                            )
+                            onGoalAdded()
+                        }
                     }
                 },
                 modifier = Modifier
@@ -179,18 +184,5 @@ fun AddGoalScreen(
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddGoalScreenPreview() {
-    OneDayBetterTheme {
-        AddGoalScreen(
-            onGoalAdded = {},
-            onNavigateToHome = {},
-            onNavigateToHabits = {},
-            onNavigateToGoals = {}
-        )
     }
 }

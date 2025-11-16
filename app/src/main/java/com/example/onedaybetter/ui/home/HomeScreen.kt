@@ -16,33 +16,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Habit
-import com.example.onedaybetter.data.HabitRepository
 import com.example.onedaybetter.data.getIcon
-import com.example.onedaybetter.ui.theme.OneDayBetterTheme
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.TextStyle
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToHabits: () -> Unit,
     onNavigateToGoals: () -> Unit
 ) {
-    val repository = HabitRepository.getInstance()
-    val habits = repository.getAllHabits()
-    val currentDate = remember { Calendar.getInstance() }
-    var selectedDate by remember { mutableStateOf(currentDate.get(Calendar.DAY_OF_MONTH)) }
+    val context = LocalContext.current
+    val repository = remember { DataRepository.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
+    var showCalendarDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedDate) {
+        habits = repository.getHabitsForDate(selectedDate)
+    }
 
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
                 selectedTab = 0,
                 onTabSelected = { tab ->
-                    when(tab) {
+                    when (tab) {
                         1 -> onNavigateToHabits()
                         2 -> onNavigateToGoals()
                     }
@@ -58,14 +69,14 @@ fun HomeScreen(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // Month selector
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Agosto",
+                    text = selectedDate.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+                        .replaceFirstChar { it.uppercase() },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
@@ -73,70 +84,128 @@ fun HomeScreen(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
 
-                Icon(
-                    painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_month),
-                    contentDescription = "Calendario",
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                        .clickable { showCalendarDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "📅", fontSize = 20.sp)
+                }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Days of week
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                listOf("Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Do").forEach { day ->
+            WeekDaysScroll(
+                selectedDate = selectedDate,
+                onDateSelected = { selectedDate = it }
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = "Hábitos de hoy",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            if (habits.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = day,
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        text = "No hay hábitos para este día",
+                        fontSize = 16.sp,
+                        color = Color.Gray
                     )
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Days numbers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                (1..7).forEach { day ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(4.dp)
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (day == selectedDate) Color.Black
-                                else Color(0xFFF5F5F5)
-                            )
-                            .clickable { selectedDate = day },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = day.toString(),
-                            fontSize = 14.sp,
-                            color = if (day == selectedDate) Color.White else Color.Black,
-                            fontWeight = if (day == selectedDate) FontWeight.Bold else FontWeight.Normal
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(habits) { habit ->
+                        HabitCard(
+                            habit = habit,
+                            onToggle = {
+                                scope.launch {
+                                    repository.toggleHabitCompletion(habit.id, selectedDate)
+                                    habits = repository.getHabitsForDate(selectedDate)
+                                }
+                            }
                         )
                     }
                 }
             }
+        }
+    }
 
-            Spacer(Modifier.height(24.dp))
+    if (showCalendarDialog) {
+        CalendarDialog(
+            selectedDate = selectedDate,
+            onDateSelected = { date ->
+                selectedDate = date
+                showCalendarDialog = false
+            },
+            onDismiss = { showCalendarDialog = false }
+        )
+    }
+}
 
-            // Habits list
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(habits) { habit ->
-                    HabitCard(habit = habit)
+@Composable
+fun WeekDaysScroll(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    val startOfWeek = selectedDate.minusDays(selectedDate.dayOfWeek.value.toLong() - 1)
+    val daysOfWeek = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom").forEach { day ->
+                Text(
+                    text = day,
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            daysOfWeek.forEach { date ->
+                val isSelected = date == selectedDate
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isSelected) Color.Black
+                            else Color(0xFFF5F5F5)
+                        )
+                        .clickable { onDateSelected(date) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = date.dayOfMonth.toString(),
+                        fontSize = 14.sp,
+                        color = if (isSelected) Color(0xFFF5F5F5) else Color.Black,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
             }
         }
@@ -144,7 +213,121 @@ fun HomeScreen(
 }
 
 @Composable
-fun HabitCard(habit: Habit) {
+fun CalendarDialog(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
+                    Text("◀", fontSize = 20.sp)
+                }
+
+                Text(
+                    text = currentMonth.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
+                        .replaceFirstChar { it.uppercase() } + " ${currentMonth.year}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
+                    Text("▶", fontSize = 20.sp)
+                }
+            }
+        },
+        text = {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    listOf("L", "M", "X", "J", "V", "S", "D").forEach { day ->
+                        Text(
+                            text = day,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Gray,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                val firstDayOfMonth = currentMonth.atDay(1)
+                val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
+                val daysInMonth = currentMonth.lengthOfMonth()
+                val totalCells = ((firstDayOfWeek - 1 + daysInMonth + 6) / 7) * 7
+
+                Column {
+                    for (week in 0 until (totalCells / 7)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            for (day in 1..7) {
+                                val cellIndex = week * 7 + day
+                                val dayOfMonth = cellIndex - (firstDayOfWeek - 1)
+
+                                if (dayOfMonth in 1..daysInMonth) {
+                                    val date = currentMonth.atDay(dayOfMonth)
+                                    val isSelected = date == selectedDate
+                                    val isToday = date == LocalDate.now()
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                when {
+                                                    isSelected -> Color.Black
+                                                    isToday -> Color(0xFFE3F2FD)
+                                                    else -> Color.Transparent
+                                                }
+                                            )
+                                            .clickable { onDateSelected(date) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = dayOfMonth.toString(),
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) Color.White else Color.Black,
+                                            fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                } else {
+                                    Box(modifier = Modifier.weight(1f).aspectRatio(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+@Composable
+fun HabitCard(habit: Habit, onToggle: () -> Unit) {
+    val isCompleted = habit.weekProgress.lastOrNull() ?: false
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,13 +366,14 @@ fun HabitCard(habit: Habit) {
             modifier = Modifier
                 .size(24.dp)
                 .background(
-                    if (habit.weekProgress[0]) Color.Black else Color.White,
+                    if (isCompleted) Color.Black else Color.White,
                     CircleShape
                 )
-                .border(1.dp, Color.Gray, CircleShape),
+                .border(1.dp, Color.Gray, CircleShape)
+                .clickable { onToggle() },
             contentAlignment = Alignment.Center
         ) {
-            if (habit.weekProgress[0]) {
+            if (isCompleted) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Completado",
@@ -232,16 +416,5 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
                 tint = if (selectedTab == 2) Color.Black else Color.Gray
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    OneDayBetterTheme {
-        HomeScreen(
-            onNavigateToHabits = {},
-            onNavigateToGoals = {}
-        )
     }
 }

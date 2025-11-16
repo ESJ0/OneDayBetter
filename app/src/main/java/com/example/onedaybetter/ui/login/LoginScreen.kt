@@ -7,16 +7,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.onedaybetter.ui.theme.OneDayBetterTheme
+import com.example.onedaybetter.data.DataRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember { DataRepository.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
     var email by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -66,26 +72,44 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
+                ),
+                enabled = !isLoading
             )
 
             Spacer(Modifier.height(16.dp))
 
             Button(
-                onClick = onLoginSuccess,
+                onClick = {
+                    if (email.isNotBlank() && email.contains("@")) {
+                        isLoading = true
+                        scope.launch {
+                            repository.loginUser(email)
+                            isLoading = false
+                            onLoginSuccess()
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Black
-                )
+                ),
+                enabled = !isLoading && email.isNotBlank() && email.contains("@")
             ) {
-                Text(
-                    text = "Continue",
-                    fontSize = 16.sp,
-                    color = Color.White
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Text(
+                        text = "Continue",
+                        fontSize = 16.sp,
+                        color = Color.White
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -99,14 +123,15 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Spacer(Modifier.height(24.dp))
 
             OutlinedButton(
-                onClick = { /* Google Sign In */ },
+                onClick = { /* Google Sign In - To implement */ },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color(0xFFF5F5F5)
-                )
+                ),
+                enabled = !isLoading
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -130,14 +155,15 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(
-                onClick = { /* Apple Sign In */ },
+                onClick = { /* Apple Sign In - To implement */ },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color(0xFFF5F5F5)
-                )
+                ),
+                enabled = !isLoading
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -193,13 +219,5 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    OneDayBetterTheme {
-        LoginScreen(onLoginSuccess = {})
     }
 }
