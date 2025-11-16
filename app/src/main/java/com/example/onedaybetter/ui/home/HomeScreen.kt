@@ -140,6 +140,7 @@ fun HomeScreen(
                     items(habits) { habit ->
                         HabitCard(
                             habit = habit,
+                            selectedDate = selectedDate,
                             onToggle = {
                                 scope.launch {
                                     repository.toggleHabitCompletion(habit.id, selectedDate)
@@ -338,8 +339,14 @@ fun CalendarDialog(
 }
 
 @Composable
-fun HabitCard(habit: Habit, onToggle: () -> Unit, onClick: () -> Unit) {
-    val isCompleted = habit.weekProgress.lastOrNull() ?: false
+fun HabitCard(
+    habit: Habit,
+    selectedDate: LocalDate,
+    onToggle: () -> Unit,
+    onClick: () -> Unit
+) {
+    // El primer elemento de weekProgress corresponde al estado del selectedDate
+    val isCompleted = habit.weekProgress.firstOrNull() ?: false
 
     Row(
         modifier = Modifier

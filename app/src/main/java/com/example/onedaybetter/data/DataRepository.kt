@@ -25,7 +25,8 @@ data class Habit(
         var currentDate = createdDate
 
         while (!currentDate.isAfter(today)) {
-            val dayOfWeek = currentDate.dayOfWeek.value
+            // Convertir DayOfWeek de Java a nuestro sistema
+            val dayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
             if (daysOfWeek.contains(dayOfWeek)) {
                 totalActiveDays++
             }
@@ -97,6 +98,11 @@ class DataRepository(context: Context) {
         habitDao.insert(habit)
     }
 
+    suspend fun deleteHabit(habitId: Int) {
+        val habit = habitDao.getHabitById(habitId) ?: return
+        habitDao.delete(habit)
+    }
+
     fun getAllHabits(): Flow<List<Habit>> {
         return kotlinx.coroutines.flow.flow {
             val email = getCurrentUserEmail() ?: return@flow
@@ -129,7 +135,8 @@ class DataRepository(context: Context) {
         var currentDate = createdDate
 
         while (!currentDate.isAfter(today)) {
-            val dayOfWeek = currentDate.dayOfWeek.value
+            // Convertir DayOfWeek de Java a nuestro sistema
+            val dayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
             if (daysOfWeek.contains(dayOfWeek)) {
                 val dateStr = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
                 val completion = completionDao.getCompletion(habitId, dateStr)
@@ -143,14 +150,17 @@ class DataRepository(context: Context) {
 
     suspend fun getHabitsForDate(date: LocalDate): List<Habit> {
         val email = getCurrentUserEmail() ?: return emptyList()
-        val dayOfWeek = date.dayOfWeek.value
+        // Convertir DayOfWeek de Java (1=Lunes, 7=Domingo) a nuestro sistema (1=Lunes, 7=Domingo)
+        // pero tratando domingo como 7 en lugar de 0
+        val dayOfWeek = if (date.dayOfWeek.value == 7) 7 else date.dayOfWeek.value
         val entities = habitDao.getHabitsForDay(email, dayOfWeek).first()
 
         return entities.map { entity ->
             val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
             val completion = completionDao.getCompletion(entity.id, dateStr)
-            val allCompletions = getAllCompletionsForHabit(entity.id)
 
+            // Para HomeScreen, weekProgress contiene solo el estado del día seleccionado
+            // como primer elemento
             Habit(
                 id = entity.id,
                 name = entity.name,
@@ -160,7 +170,7 @@ class DataRepository(context: Context) {
                 daysOfWeek = entity.daysOfWeek.split(",")
                     .mapNotNull { it.toIntOrNull() },
                 createdAt = entity.createdAt
-            ).copy(weekProgress = allCompletions)
+            )
         }
     }
 

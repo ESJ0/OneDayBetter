@@ -12,7 +12,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,7 +44,7 @@ fun HabitsListScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { DataRepository.getInstance(context) }
-    var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
+    val habits by repository.getAllHabits().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val isDark = isSystemInDarkTheme()
 
@@ -46,14 +52,6 @@ fun HabitsListScreen(
     val today = LocalDate.now()
     val dayOfWeek = today.dayOfWeek.value % 7
     val startOfWeek = today.minusDays(dayOfWeek.toLong())
-
-    LaunchedEffect(Unit) {
-        scope.launch {
-            repository.getAllHabits().collect { habitsList ->
-                habits = habitsList
-            }
-        }
-    }
 
     Scaffold(
         containerColor = if (isDark) Color(0xFF000000) else Color.White,
@@ -121,25 +119,6 @@ fun HabitsListScreen(
             ) {
                 item {
                     Spacer(Modifier.height(8.dp))
-
-                    // Encabezados de los días
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb").forEach { day ->
-                            Text(
-                                text = day,
-                                fontSize = 11.sp,
-                                color = Color.Gray,
-                                modifier = Modifier.width(44.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
                 }
 
                 items(habits) { habit ->
@@ -150,7 +129,12 @@ fun HabitsListScreen(
                         onClick = { onNavigateToHabitDetail(habit.id) },
                         onDelete = {
                             scope.launch {
-                                // TODO: Implementar eliminación
+                                repository.deleteHabit(habit.id)
+                            }
+                        },
+                        onDayToggle = { date ->
+                            scope.launch {
+                                repository.toggleHabitCompletion(habit.id, date)
                             }
                         }
                     )
@@ -168,7 +152,8 @@ fun ModernHabitCard(
     isDark: Boolean,
     startOfWeek: LocalDate,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDayToggle: (LocalDate) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -179,14 +164,15 @@ fun ModernHabitCard(
                 color = if (isDark) Color(0xFF1C1C1E) else Color(0xFFF8F8F8),
                 shape = RoundedCornerShape(16.dp)
             )
-            .clickable { onClick() }
             .padding(16.dp)
     ) {
-        // Header: Nombre del hábito, días activos y menú
+        // Header: Nombre del hábito e icono - Ahora clickeable solo esta parte
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -217,80 +203,86 @@ fun ModernHabitCard(
                 Text(
                     text = daysText,
                     fontSize = 12.sp,
-                    color = Color(0xFF000000),
+                    color = Color.Gray,
                     fontWeight = FontWeight.Medium
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Icono del hábito
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Icono del hábito
-                Box(
-                    modifier = Modifier.size(48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = habit.type.getIconVector(),
-                        contentDescription = null,
-                        tint = if (isDark) Color.White else Color.Black,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-
-                // Menú de tres puntos
-                Box {
-                    IconButton(
-                        onClick = { showMenu = true },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Más opciones",
-                            tint = if (isDark) Color.White else Color.Black
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Eliminar") },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            }
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = habit.type.getIconVector(),
+                    contentDescription = null,
+                    tint = if (isDark) Color.White else Color.Black,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // Días de la semana
+        // Encabezados de los días de la semana
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Ajustar weekProgress para iniciar en domingo
-            val adjustedProgress = listOf(
-                habit.weekProgress.getOrNull(6) ?: false, // Dom
-                habit.weekProgress.getOrNull(0) ?: false, // Lun
-                habit.weekProgress.getOrNull(1) ?: false, // Mar
-                habit.weekProgress.getOrNull(2) ?: false, // Mié
-                habit.weekProgress.getOrNull(3) ?: false, // Jue
-                habit.weekProgress.getOrNull(4) ?: false, // Vie
-                habit.weekProgress.getOrNull(5) ?: false  // Sáb
-            )
+            listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb").forEach { day ->
+                Text(
+                    text = day,
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.width(44.dp),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
 
-            adjustedProgress.forEachIndexed { index, isCompleted ->
-                val date = startOfWeek.plusDays(index.toLong())
+        Spacer(Modifier.height(8.dp))
+
+        // Días de la semana con números
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Los 7 días de la semana comenzando desde domingo
+            (0..6).forEach { dayOffset ->
+                val date = startOfWeek.plusDays(dayOffset.toLong())
                 val dayNumber = date.dayOfMonth
-                val dayOfWeekNum = (index + 7) % 7 + 1 // Convertir: 0=Dom(7), 1=Lun(1), etc.
-                val isActiveDay = habit.daysOfWeek.contains(if (dayOfWeekNum == 7) 7 else dayOfWeekNum)
+
+                // Convertir el día de la semana de Java a nuestro sistema
+                val dayOfWeekNum = if (date.dayOfWeek.value == 7) 7 else date.dayOfWeek.value
+                val isActiveDay = habit.daysOfWeek.contains(dayOfWeekNum)
+
+                // Buscar si este día específico está completado
+                val createdDate = LocalDate.ofEpochDay(habit.createdAt / (24 * 60 * 60 * 1000))
+                val today = LocalDate.now()
+
+                // Crear un mapeo de fechas a índices en weekProgress
+                val dateToIndexMap = mutableMapOf<LocalDate, Int>()
+                var currentDate = createdDate
+                var index = 0
+
+                while (!currentDate.isAfter(today)) {
+                    val checkDayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
+
+                    if (habit.daysOfWeek.contains(checkDayOfWeek)) {
+                        dateToIndexMap[currentDate] = index
+                        index++
+                    }
+                    currentDate = currentDate.plusDays(1)
+                }
+
+                // Verificar si este día está completado
+                val isCompleted = if (isActiveDay && !date.isBefore(createdDate) && !date.isAfter(today)) {
+                    val completionIndex = dateToIndexMap[date]
+                    completionIndex?.let { habit.weekProgress.getOrNull(it) ?: false } ?: false
+                } else {
+                    false
+                }
 
                 Box(
                     modifier = Modifier
@@ -302,6 +294,14 @@ fun ModernHabitCard(
                                 else -> if (isDark) Color(0xFF2C2C2E) else Color(0xFFE8E8E8)
                             },
                             shape = CircleShape
+                        )
+                        .clickable(
+                            enabled = isActiveDay && !date.isAfter(today),
+                            onClick = {
+                                if (isActiveDay && !date.isAfter(today)) {
+                                    onDayToggle(date)
+                                }
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -321,25 +321,59 @@ fun ModernHabitCard(
 
         Spacer(Modifier.height(16.dp))
 
-        // Footer con porcentaje
+        // Footer con porcentaje y menú de tres puntos
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(android.R.drawable.checkbox_on_background),
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(18.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = androidx.compose.ui.res.painterResource(android.R.drawable.checkbox_on_background),
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
 
-            Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(6.dp))
 
-            Text(
-                text = "${habit.getCompletionPercentage()}%",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                fontWeight = FontWeight.Medium
-            )
+                Text(
+                    text = "${habit.getCompletionPercentage()}%",
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Menú de tres puntos
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Más opciones",
+                        tint = if (isDark) Color.White else Color.Black,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Eliminar") },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                }
+            }
         }
     }
 }
