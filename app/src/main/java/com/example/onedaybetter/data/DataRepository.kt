@@ -7,17 +7,35 @@ import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// Data models (moved here to avoid duplication)
 data class Habit(
     val id: Int,
     val name: String,
     val type: HabitType,
     val description: String = "",
     val weekProgress: List<Boolean> = List(7) { false },
-    val daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7)
+    val daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7),
+    val createdAt: Long = System.currentTimeMillis()
 ) {
     fun getCompletionPercentage(): Int {
-        return (weekProgress.count { it } * 100) / weekProgress.size
+        val createdDate = LocalDate.ofEpochDay(createdAt / (24 * 60 * 60 * 1000))
+        val today = LocalDate.now()
+
+        // Contar días desde la creación hasta hoy que corresponden a los días activos
+        var totalActiveDays = 0
+        var currentDate = createdDate
+
+        while (!currentDate.isAfter(today)) {
+            val dayOfWeek = currentDate.dayOfWeek.value
+            if (daysOfWeek.contains(dayOfWeek)) {
+                totalActiveDays++
+            }
+            currentDate = currentDate.plusDays(1)
+        }
+
+        if (totalActiveDays == 0) return 0
+
+        val completedDays = weekProgress.count { it }
+        return (completedDays * 100) / totalActiveDays
     }
 }
 
@@ -27,25 +45,6 @@ enum class HabitType {
     FOOD,
     VALUE
 }
-
-fun HabitType.getIcon(): String {
-    return when(this) {
-        HabitType.EXERCISE -> "🏃"
-        HabitType.SLEEP -> "😴"
-        HabitType.FOOD -> "❤️"
-        HabitType.VALUE -> "💎"
-    }
-}
-
-
-data class HabitStats(
-    val habitId: Int,
-    val totalDays: Int,
-    val completedDays: Int,
-    val completionRate: Int,
-    val currentStreak: Int,
-    val completions: List<Pair<String, Boolean>>
-)
 
 data class Goal(
     val id: Int,
@@ -64,7 +63,6 @@ class DataRepository(context: Context) {
 
     private var currentUserEmail: String? = null
 
-    // User operations
     suspend fun loginUser(email: String) {
         currentUserEmail = email
         var user = userDao.getUserByEmail(email)
@@ -81,7 +79,6 @@ class DataRepository(context: Context) {
         return currentUserEmail
     }
 
-    // Habit operations
     suspend fun addHabit(
         name: String,
         type: HabitType,
@@ -94,7 +91,8 @@ class DataRepository(context: Context) {
             name = name,
             type = type.name,
             description = description,
-            daysOfWeek = daysOfWeek.joinToString(",")
+            daysOfWeek = daysOfWeek.joinToString(","),
+            createdAt = System.currentTimeMillis()
         )
         habitDao.insert(habit)
     }
@@ -104,15 +102,16 @@ class DataRepository(context: Context) {
             val email = getCurrentUserEmail() ?: return@flow
             habitDao.getHabitsByUser(email).collect { entities ->
                 val habits = entities.map { entity ->
-                    val weekProgress = getWeekProgress(entity.id)
+                    val allCompletions = getAllCompletionsForHabit(entity.id)
                     Habit(
                         id = entity.id,
                         name = entity.name,
                         type = HabitType.valueOf(entity.type),
                         description = entity.description,
-                        weekProgress = weekProgress,
+                        weekProgress = allCompletions,
                         daysOfWeek = entity.daysOfWeek.split(",")
-                            .mapNotNull { it.toIntOrNull() }
+                            .mapNotNull { it.toIntOrNull() },
+                        createdAt = entity.createdAt
                     )
                 }
                 emit(habits)
@@ -120,14 +119,37 @@ class DataRepository(context: Context) {
         }
     }
 
+    private suspend fun getAllCompletionsForHabit(habitId: Int): List<Boolean> {
+        val entity = habitDao.getHabitById(habitId) ?: return emptyList()
+        val createdDate = LocalDate.ofEpochDay(entity.createdAt / (24 * 60 * 60 * 1000))
+        val today = LocalDate.now()
+        val daysOfWeek = entity.daysOfWeek.split(",").mapNotNull { it.toIntOrNull() }
+
+        val completions = mutableListOf<Boolean>()
+        var currentDate = createdDate
+
+        while (!currentDate.isAfter(today)) {
+            val dayOfWeek = currentDate.dayOfWeek.value
+            if (daysOfWeek.contains(dayOfWeek)) {
+                val dateStr = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                val completion = completionDao.getCompletion(habitId, dateStr)
+                completions.add(completion?.completed ?: false)
+            }
+            currentDate = currentDate.plusDays(1)
+        }
+
+        return completions
+    }
+
     suspend fun getHabitsForDate(date: LocalDate): List<Habit> {
         val email = getCurrentUserEmail() ?: return emptyList()
-        val dayOfWeek = date.dayOfWeek.value // 1=Monday, 7=Sunday
+        val dayOfWeek = date.dayOfWeek.value
         val entities = habitDao.getHabitsForDay(email, dayOfWeek).first()
 
         return entities.map { entity ->
             val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
             val completion = completionDao.getCompletion(entity.id, dateStr)
+            val allCompletions = getAllCompletionsForHabit(entity.id)
 
             Habit(
                 id = entity.id,
@@ -136,14 +158,16 @@ class DataRepository(context: Context) {
                 description = entity.description,
                 weekProgress = listOf(completion?.completed ?: false),
                 daysOfWeek = entity.daysOfWeek.split(",")
-                    .mapNotNull { it.toIntOrNull() }
-            )
+                    .mapNotNull { it.toIntOrNull() },
+                createdAt = entity.createdAt
+            ).copy(weekProgress = allCompletions)
         }
     }
 
     private suspend fun getWeekProgress(habitId: Int): List<Boolean> {
         val today = LocalDate.now()
-        val startOfWeek = today.minusDays(today.dayOfWeek.value.toLong() - 1)
+        val dayOfWeek = today.dayOfWeek.value % 7 // Domingo = 0
+        val startOfWeek = today.minusDays(dayOfWeek.toLong())
 
         return (0..6).map { dayOffset ->
             val date = startOfWeek.plusDays(dayOffset.toLong())
@@ -170,7 +194,6 @@ class DataRepository(context: Context) {
         }
     }
 
-    // Goal operations
     suspend fun addGoal(
         name: String,
         description: String,

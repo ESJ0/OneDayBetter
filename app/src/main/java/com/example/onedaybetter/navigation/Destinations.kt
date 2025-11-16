@@ -15,6 +15,9 @@ object HabitsList
 object AddHabit
 
 @Serializable
+data class HabitDetail(val habitId: Int)
+
+@Serializable
 object GoalsList
 
 @Serializable

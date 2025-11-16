@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.HabitType
+import com.example.onedaybetter.ui.habitdetail.getDisplayName
+import com.example.onedaybetter.ui.habitdetail.getIconVector
 import com.example.onedaybetter.ui.home.BottomNavigationBar
 import kotlinx.coroutines.launch
 
@@ -37,7 +38,7 @@ fun AddHabitScreen(
 
     var habitName by remember { mutableStateOf("") }
     var habitDescription by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf("Value") }
+    var selectedType by remember { mutableStateOf(HabitType.VALUE) }
     var expanded by remember { mutableStateOf(false) }
     var selectedDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
 
@@ -102,17 +103,24 @@ fun AddHabitScreen(
 
             Box {
                 OutlinedTextField(
-                    value = selectedType,
+                    value = selectedType.getDisplayName(),
                     onValueChange = {},
                     readOnly = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = true },
-                    trailingIcon = {
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = null
+                            imageVector = selectedType.getIconVector(),
+                            contentDescription = null,
+                            tint = Color.Black
                         )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { expanded = !expanded }) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null
+                            )
+                        }
                     },
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -122,13 +130,27 @@ fun AddHabitScreen(
 
                 DropdownMenu(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(0.85f)
                 ) {
-                    listOf("Value", "Exercise", "Sleep", "Food").forEach { option ->
+                    HabitType.entries.forEach { type ->
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = type.getIconVector(),
+                                        contentDescription = null,
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(type.getDisplayName())
+                                }
+                            },
                             onClick = {
-                                selectedType = option
+                                selectedType = type
                                 expanded = false
                             }
                         )
@@ -216,17 +238,10 @@ fun AddHabitScreen(
             Button(
                 onClick = {
                     if (habitName.isNotBlank() && selectedDays.isNotEmpty()) {
-                        val type = when(selectedType) {
-                            "Exercise" -> HabitType.EXERCISE
-                            "Sleep" -> HabitType.SLEEP
-                            "Food" -> HabitType.FOOD
-                            else -> HabitType.VALUE
-                        }
-
                         scope.launch {
                             repository.addHabit(
                                 name = habitName,
-                                type = type,
+                                type = selectedType,
                                 description = habitDescription,
                                 daysOfWeek = selectedDays.toList()
                             )

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Habit
-import com.example.onedaybetter.data.getIcon
+import com.example.onedaybetter.data.HabitType
+import com.example.onedaybetter.ui.habitdetail.getIconVector
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -34,7 +36,8 @@ import java.util.*
 @Composable
 fun HomeScreen(
     onNavigateToHabits: () -> Unit,
-    onNavigateToGoals: () -> Unit
+    onNavigateToGoals: () -> Unit,
+    onNavigateToHabitDetail: (Int) -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DataRepository.getInstance(context) }
@@ -74,6 +77,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Mes clickeable con calendario
                 Text(
                     text = selectedDate.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
                         .replaceFirstChar { it.uppercase() },
@@ -81,17 +85,23 @@ fun HomeScreen(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                        .clickable { showCalendarDialog = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
 
+                // Icono de configuración
                 Box(
                     modifier = Modifier
                         .size(40.dp)
                         .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                        .clickable { showCalendarDialog = true },
+                        .clickable { /* TODO: Abrir configuración */ },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "📅", fontSize = 20.sp)
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Configuración",
+                        tint = Color.Black
+                    )
                 }
             }
 
@@ -135,7 +145,8 @@ fun HomeScreen(
                                     repository.toggleHabitCompletion(habit.id, selectedDate)
                                     habits = repository.getHabitsForDate(selectedDate)
                                 }
-                            }
+                            },
+                            onClick = { onNavigateToHabitDetail(habit.id) }
                         )
                     }
                 }
@@ -160,7 +171,9 @@ fun WeekDaysScroll(
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit
 ) {
-    val startOfWeek = selectedDate.minusDays(selectedDate.dayOfWeek.value.toLong() - 1)
+    // Comienza la semana el domingo
+    val dayOfWeek = selectedDate.dayOfWeek.value % 7 // Convierte 7 (domingo) a 0
+    val startOfWeek = selectedDate.minusDays(dayOfWeek.toLong())
     val daysOfWeek = (0..6).map { startOfWeek.plusDays(it.toLong()) }
 
     Column {
@@ -168,7 +181,7 @@ fun WeekDaysScroll(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom").forEach { day ->
+            listOf("Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb").forEach { day ->
                 Text(
                     text = day,
                     fontSize = 12.sp,
@@ -250,7 +263,7 @@ fun CalendarDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    listOf("L", "M", "X", "J", "V", "S", "D").forEach { day ->
+                    listOf("D", "L", "M", "X", "J", "V", "S").forEach { day ->
                         Text(
                             text = day,
                             fontSize = 12.sp,
@@ -265,9 +278,9 @@ fun CalendarDialog(
                 Spacer(Modifier.height(8.dp))
 
                 val firstDayOfMonth = currentMonth.atDay(1)
-                val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
+                val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7 // Domingo = 0
                 val daysInMonth = currentMonth.lengthOfMonth()
-                val totalCells = ((firstDayOfWeek - 1 + daysInMonth + 6) / 7) * 7
+                val totalCells = ((firstDayOfWeek + daysInMonth + 6) / 7) * 7
 
                 Column {
                     for (week in 0 until (totalCells / 7)) {
@@ -275,9 +288,9 @@ fun CalendarDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            for (day in 1..7) {
+                            for (day in 0..6) {
                                 val cellIndex = week * 7 + day
-                                val dayOfMonth = cellIndex - (firstDayOfWeek - 1)
+                                val dayOfMonth = cellIndex - firstDayOfWeek + 1
 
                                 if (dayOfMonth in 1..daysInMonth) {
                                     val date = currentMonth.atDay(dayOfMonth)
@@ -325,7 +338,7 @@ fun CalendarDialog(
 }
 
 @Composable
-fun HabitCard(habit: Habit, onToggle: () -> Unit) {
+fun HabitCard(habit: Habit, onToggle: () -> Unit, onClick: () -> Unit) {
     val isCompleted = habit.weekProgress.lastOrNull() ?: false
 
     Row(
@@ -339,7 +352,9 @@ fun HabitCard(habit: Habit, onToggle: () -> Unit) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onClick() }
         ) {
             Box(
                 modifier = Modifier
@@ -347,9 +362,11 @@ fun HabitCard(habit: Habit, onToggle: () -> Unit) {
                     .background(Color(0xFFF5F5F5), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = habit.type.getIcon(),
-                    fontSize = 20.sp
+                Icon(
+                    imageVector = habit.type.getIconVector(),
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -370,7 +387,11 @@ fun HabitCard(habit: Habit, onToggle: () -> Unit) {
                     CircleShape
                 )
                 .border(1.dp, Color.Gray, CircleShape)
-                .clickable { onToggle() },
+                .clickable(
+                    onClick = { onToggle() },
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (isCompleted) {

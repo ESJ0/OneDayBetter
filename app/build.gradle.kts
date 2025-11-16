@@ -81,6 +81,9 @@ dependencies {
     // Charts for statistics
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
+    // Material Icons Extended (para más iconos)
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

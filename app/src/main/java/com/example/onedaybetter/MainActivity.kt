@@ -7,10 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.example.onedaybetter.navigation.*
 import com.example.onedaybetter.ui.addgoal.AddGoalScreen
 import com.example.onedaybetter.ui.addhabit.AddHabitScreen
 import com.example.onedaybetter.ui.goals.GoalsListScreen
+import com.example.onedaybetter.ui.habitdetail.HabitDetailScreen
 import com.example.onedaybetter.ui.habits.HabitsListScreen
 import com.example.onedaybetter.ui.home.HomeScreen
 import com.example.onedaybetter.ui.login.LoginScreen
@@ -45,7 +47,10 @@ fun AppNavHost() {
         composable<Home> {
             HomeScreen(
                 onNavigateToHabits = { navController.navigate(HabitsList) },
-                onNavigateToGoals = { navController.navigate(GoalsList) }
+                onNavigateToGoals = { navController.navigate(GoalsList) },
+                onNavigateToHabitDetail = { habitId ->
+                    navController.navigate(HabitDetail(habitId))
+                }
             )
         }
 
@@ -53,7 +58,10 @@ fun AppNavHost() {
             HabitsListScreen(
                 onNavigateToHome = { navController.navigate(Home) },
                 onNavigateToAddHabit = { navController.navigate(AddHabit) },
-                onNavigateToGoals = { navController.navigate(GoalsList) }
+                onNavigateToGoals = { navController.navigate(GoalsList) },
+                onNavigateToHabitDetail = { habitId ->
+                    navController.navigate(HabitDetail(habitId))
+                }
             )
         }
 
@@ -63,6 +71,14 @@ fun AppNavHost() {
                 onNavigateToHome = { navController.navigate(Home) },
                 onNavigateToHabits = { navController.navigate(HabitsList) },
                 onNavigateToGoals = { navController.navigate(GoalsList) }
+            )
+        }
+
+        composable<HabitDetail> { backStackEntry ->
+            val habitDetail = backStackEntry.toRoute<HabitDetail>()
+            HabitDetailScreen(
+                habitId = habitDetail.habitId,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
