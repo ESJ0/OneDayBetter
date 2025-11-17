@@ -2,6 +2,10 @@ package com.example.onedaybetter.ui.login
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -9,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,7 +29,12 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var isRegisterMode by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -36,8 +48,9 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
+            Spacer(Modifier.height(40.dp))
             Text(
                 text = "OneDayBetter",
                 fontSize = 28.sp,
@@ -48,7 +61,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Spacer(Modifier.height(80.dp))
 
             Text(
-                text = "Create an account",
+                text = if (isRegisterMode) "Crear cuenta" else "Iniciar sesión",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -57,35 +70,145 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Enter your email to sign up for this app",
+                text = if (isRegisterMode)
+                    "Ingresa tus datos para registrarte"
+                else
+                    "Ingresa tus credenciales",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
             )
 
             Spacer(Modifier.height(24.dp))
 
+            if (isRegisterMode) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        errorMessage = null
+                    },
+                    placeholder = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    ),
+                    enabled = !isLoading
+                )
+
+                Spacer(Modifier.height(16.dp))
+            }
+
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = {
+                    email = it
+                    errorMessage = null
+                },
                 placeholder = { Text("email@domain.com") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                 ),
-                enabled = !isLoading
+                enabled = !isLoading,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = {
+                    password = it
+                    errorMessage = null
+                },
+                placeholder = { Text("Contraseña") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                ),
+                enabled = !isLoading,
+                visualTransformation = if (passwordVisible)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Default.Visibility
+                            else
+                                Icons.Default.VisibilityOff,
+                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                        )
+                    }
+                }
+            )
+
+            if (errorMessage != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = errorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 12.sp
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    if (email.isNotBlank() && email.contains("@")) {
+                    if (isRegisterMode) {
+                        // Registro
+                        if (name.isBlank()) {
+                            errorMessage = "El nombre es requerido"
+                            return@Button
+                        }
+                        if (!email.contains("@")) {
+                            errorMessage = "Email inválido"
+                            return@Button
+                        }
+                        if (password.length < 6) {
+                            errorMessage = "La contraseña debe tener al menos 6 caracteres"
+                            return@Button
+                        }
+
                         isLoading = true
                         scope.launch {
-                            repository.loginUser(email)
+                            val success = repository.registerUser(email, password, name)
+                            if (success) {
+                                val loginSuccess = repository.loginUser(email, password)
+                                if (loginSuccess) {
+                                    onLoginSuccess()
+                                }
+                            } else {
+                                errorMessage = "El email ya está registrado"
+                            }
                             isLoading = false
-                            onLoginSuccess()
+                        }
+                    } else {
+                        // Login
+                        if (!email.contains("@")) {
+                            errorMessage = "Email inválido"
+                            return@Button
+                        }
+                        if (password.isBlank()) {
+                            errorMessage = "La contraseña es requerida"
+                            return@Button
+                        }
+
+                        isLoading = true
+                        scope.launch {
+                            val success = repository.loginUser(email, password)
+                            if (success) {
+                                onLoginSuccess()
+                            } else {
+                                errorMessage = "Credenciales incorrectas"
+                            }
+                            isLoading = false
                         }
                     }
                 },
@@ -96,7 +219,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Black
                 ),
-                enabled = !isLoading && email.isNotBlank() && email.contains("@")
+                enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -105,17 +228,36 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     )
                 } else {
                     Text(
-                        text = "Continue",
+                        text = if (isRegisterMode) "Crear cuenta" else "Iniciar sesión",
                         fontSize = 16.sp,
                         color = Color.White
                     )
                 }
             }
 
+            Spacer(Modifier.height(16.dp))
+
+            TextButton(
+                onClick = {
+                    isRegisterMode = !isRegisterMode
+                    errorMessage = null
+                },
+                enabled = !isLoading
+            ) {
+                Text(
+                    text = if (isRegisterMode)
+                        "¿Ya tienes cuenta? Inicia sesión"
+                    else
+                        "¿No tienes cuenta? Regístrate",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = "or",
+                text = "o",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
             )
@@ -145,7 +287,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Continue with Google",
+                        text = "Continuar con Google",
                         fontSize = 16.sp,
                         color = Color.Black
                     )
@@ -177,7 +319,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Continue with Apple",
+                        text = "Continuar con Apple",
                         fontSize = 16.sp,
                         color = Color.Black
                     )
@@ -191,12 +333,12 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "By clicking continue, you agree to our ",
+                    text = "Al continuar, aceptas nuestros ",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Text(
-                    text = "Terms of Service",
+                    text = "Términos de Servicio",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textDecoration = TextDecoration.Underline
@@ -207,12 +349,12 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "and ",
+                    text = "y ",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
                 Text(
-                    text = "Privacy Policy",
+                    text = "Política de Privacidad",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textDecoration = TextDecoration.Underline

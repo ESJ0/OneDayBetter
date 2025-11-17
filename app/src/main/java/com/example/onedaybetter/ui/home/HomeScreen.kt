@@ -3,6 +3,7 @@ package com.example.onedaybetter.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,7 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Habit
-import com.example.onedaybetter.data.HabitType
 import com.example.onedaybetter.ui.habitdetail.getIconVector
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -37,11 +37,13 @@ import java.util.*
 fun HomeScreen(
     onNavigateToHabits: () -> Unit,
     onNavigateToGoals: () -> Unit,
-    onNavigateToHabitDetail: (Int) -> Unit
+    onNavigateToHabitDetail: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     val context = LocalContext.current
     val repository = remember { DataRepository.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val isDark = isSystemInDarkTheme()
 
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
@@ -52,6 +54,7 @@ fun HomeScreen(
     }
 
     Scaffold(
+        containerColor = if (isDark) Color(0xFF000000) else Color.White,
         bottomBar = {
             BottomNavigationBar(
                 selectedTab = 0,
@@ -77,30 +80,32 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Mes clickeable con calendario
                 Text(
                     text = selectedDate.month.getDisplayName(TextStyle.FULL, Locale("es", "ES"))
                         .replaceFirstChar { it.uppercase() },
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
+                    color = if (isDark) Color.White else Color.Black,
                     modifier = Modifier
-                        .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                        .border(1.dp, if (isDark) Color.Gray else Color.Gray, RoundedCornerShape(8.dp))
                         .clickable { showCalendarDialog = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
 
-                // Icono de configuración
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                        .clickable { /* TODO: Abrir configuración */ },
+                        .background(
+                            if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable { onNavigateToProfile() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Configuración",
-                        tint = Color.Black
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Perfil",
+                        tint = if (isDark) Color.White else Color.Black
                     )
                 }
             }
@@ -109,7 +114,8 @@ fun HomeScreen(
 
             WeekDaysScroll(
                 selectedDate = selectedDate,
-                onDateSelected = { selectedDate = it }
+                onDateSelected = { selectedDate = it },
+                isDark = isDark
             )
 
             Spacer(Modifier.height(24.dp))
@@ -117,7 +123,8 @@ fun HomeScreen(
             Text(
                 text = "Hábitos de hoy",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(12.dp))
@@ -141,13 +148,14 @@ fun HomeScreen(
                         HabitCard(
                             habit = habit,
                             selectedDate = selectedDate,
+                            isDark = isDark,
                             onToggle = {
                                 scope.launch {
                                     repository.toggleHabitCompletion(habit.id, selectedDate)
                                     habits = repository.getHabitsForDate(selectedDate)
                                 }
                             },
-                            onClick = { onNavigateToHabitDetail(habit.id) }
+                            onClick = { onNavigateToHabitDetail() }
                         )
                     }
                 }
@@ -170,10 +178,10 @@ fun HomeScreen(
 @Composable
 fun WeekDaysScroll(
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    isDark: Boolean
 ) {
-    // Comienza la semana el domingo
-    val dayOfWeek = selectedDate.dayOfWeek.value % 7 // Convierte 7 (domingo) a 0
+    val dayOfWeek = selectedDate.dayOfWeek.value % 7
     val startOfWeek = selectedDate.minusDays(dayOfWeek.toLong())
     val daysOfWeek = (0..6).map { startOfWeek.plusDays(it.toLong()) }
 
@@ -208,8 +216,10 @@ fun WeekDaysScroll(
                         .aspectRatio(1f)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (isSelected) Color.Black
-                            else Color(0xFFF5F5F5)
+                            if (isSelected)
+                                if (isDark) Color.White else Color.Black
+                            else
+                                if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5)
                         )
                         .clickable { onDateSelected(date) },
                     contentAlignment = Alignment.Center
@@ -217,7 +227,10 @@ fun WeekDaysScroll(
                     Text(
                         text = date.dayOfMonth.toString(),
                         fontSize = 14.sp,
-                        color = if (isSelected) Color(0xFFF5F5F5) else Color.Black,
+                        color = if (isSelected)
+                            if (isDark) Color.Black else Color.White
+                        else
+                            if (isDark) Color.White else Color.Black,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                     )
                 }
@@ -279,7 +292,7 @@ fun CalendarDialog(
                 Spacer(Modifier.height(8.dp))
 
                 val firstDayOfMonth = currentMonth.atDay(1)
-                val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7 // Domingo = 0
+                val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7
                 val daysInMonth = currentMonth.lengthOfMonth()
                 val totalCells = ((firstDayOfWeek + daysInMonth + 6) / 7) * 7
 
@@ -342,17 +355,24 @@ fun CalendarDialog(
 fun HabitCard(
     habit: Habit,
     selectedDate: LocalDate,
+    isDark: Boolean,
     onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
-    // El primer elemento de weekProgress corresponde al estado del selectedDate
     val isCompleted = habit.weekProgress.firstOrNull() ?: false
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+            .background(
+                if (isDark) Color(0xFF1C1C1E) else Color.White,
+                RoundedCornerShape(12.dp)
+            )
+            .border(
+                1.dp,
+                if (isDark) Color(0xFF2C2C2E) else Color(0xFFE0E0E0),
+                RoundedCornerShape(12.dp)
+            )
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -366,13 +386,16 @@ fun HabitCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color(0xFFF5F5F5), CircleShape),
+                    .background(
+                        if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5),
+                        CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = habit.type.getIconVector(),
                     contentDescription = null,
-                    tint = Color.Black,
+                    tint = if (isDark) Color.White else Color.Black,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -382,7 +405,7 @@ fun HabitCard(
             Text(
                 text = habit.name,
                 fontSize = 14.sp,
-                color = Color.Black
+                color = if (isDark) Color.White else Color.Black
             )
         }
 
@@ -390,10 +413,17 @@ fun HabitCard(
             modifier = Modifier
                 .size(24.dp)
                 .background(
-                    if (isCompleted) Color.Black else Color.White,
+                    if (isCompleted)
+                        if (isDark) Color.White else Color.Black
+                    else
+                        if (isDark) Color(0xFF2C2C2E) else Color.White,
                     CircleShape
                 )
-                .border(1.dp, Color.Gray, CircleShape)
+                .border(
+                    1.dp,
+                    if (isDark) Color.Gray else Color.Gray,
+                    CircleShape
+                )
                 .clickable(
                     onClick = { onToggle() },
                     indication = null,
@@ -405,7 +435,7 @@ fun HabitCard(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Completado",
-                    tint = Color.White,
+                    tint = if (isDark) Color.Black else Color.White,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -415,10 +445,12 @@ fun HabitCard(
 
 @Composable
 fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    val isDark = isSystemInDarkTheme()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(if (isDark) Color(0xFF1C1C1E) else Color.White)
             .padding(vertical = 12.dp)
             .padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -427,21 +459,30 @@ fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
             Icon(
                 painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_sort_by_size),
                 contentDescription = "Inicio",
-                tint = if (selectedTab == 0) Color.Black else Color.Gray
+                tint = if (selectedTab == 0)
+                    if (isDark) Color.White else Color.Black
+                else
+                    Color.Gray
             )
         }
         IconButton(onClick = { onTabSelected(1) }) {
             Icon(
                 painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_save),
                 contentDescription = "Hábitos",
-                tint = if (selectedTab == 1) Color.Black else Color.Gray
+                tint = if (selectedTab == 1)
+                    if (isDark) Color.White else Color.Black
+                else
+                    Color.Gray
             )
         }
         IconButton(onClick = { onTabSelected(2) }) {
             Icon(
                 painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_edit),
                 contentDescription = "Metas",
-                tint = if (selectedTab == 2) Color.Black else Color.Gray
+                tint = if (selectedTab == 2)
+                    if (isDark) Color.White else Color.Black
+                else
+                    Color.Gray
             )
         }
     }

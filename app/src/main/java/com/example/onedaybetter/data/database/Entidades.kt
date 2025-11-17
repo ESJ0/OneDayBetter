@@ -7,6 +7,7 @@ import java.time.LocalDate
 data class UserEntity(
     @PrimaryKey
     val email: String,
+    val password: String,
     val name: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -72,8 +73,30 @@ data class GoalEntity(
     val id: Int = 0,
     val userEmail: String,
     val name: String,
+    val type: String,
     val description: String = "",
     val targetDate: String,
-    val targetValue: String = "+85",
+    val daysOfWeek: String,
     val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "goal_completions",
+    foreignKeys = [
+        ForeignKey(
+            entity = GoalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["goalId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("goalId"), Index("date")]
+)
+data class GoalCompletionEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val goalId: Int,
+    val date: String, // Format: "2025-11-15"
+    val completed: Boolean,
+    val completedAt: Long = System.currentTimeMillis()
 )

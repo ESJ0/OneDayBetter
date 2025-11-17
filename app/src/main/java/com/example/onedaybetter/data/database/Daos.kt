@@ -8,11 +8,17 @@ interface UserDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(user: UserEntity)
 
+    @Query("SELECT * FROM users WHERE email = :email AND password = :password")
+    suspend fun getUserByEmailAndPassword(email: String, password: String): UserEntity?
+
     @Query("SELECT * FROM users WHERE email = :email")
     suspend fun getUserByEmail(email: String): UserEntity?
 
     @Query("SELECT * FROM users LIMIT 1")
     suspend fun getCurrentUser(): UserEntity?
+
+    @Update
+    suspend fun update(user: UserEntity)
 }
 
 @Dao
@@ -34,6 +40,9 @@ interface HabitDao {
 
     @Query("SELECT * FROM habits WHERE userEmail = :email AND daysOfWeek LIKE '%' || :dayOfWeek || '%'")
     fun getHabitsForDay(email: String, dayOfWeek: Int): Flow<List<HabitEntity>>
+
+    @Query("SELECT COUNT(*) FROM habits WHERE userEmail = :email")
+    suspend fun getHabitsCount(email: String): Int
 }
 
 @Dao
@@ -89,4 +98,25 @@ interface GoalDao {
 
     @Query("SELECT * FROM goals WHERE id = :goalId")
     suspend fun getGoalById(goalId: Int): GoalEntity?
+
+    @Query("SELECT * FROM goals WHERE userEmail = :email AND daysOfWeek LIKE '%' || :dayOfWeek || '%'")
+    fun getGoalsForDay(email: String, dayOfWeek: Int): Flow<List<GoalEntity>>
+
+    @Query("SELECT COUNT(*) FROM goals WHERE userEmail = :email")
+    suspend fun getGoalsCount(email: String): Int
+}
+
+@Dao
+interface GoalCompletionDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(completion: GoalCompletionEntity)
+
+    @Query("SELECT * FROM goal_completions WHERE goalId = :goalId AND date = :date LIMIT 1")
+    suspend fun getCompletion(goalId: Int, date: String): GoalCompletionEntity?
+
+    @Query("SELECT * FROM goal_completions WHERE goalId = :goalId ORDER BY date DESC")
+    fun getCompletionsByGoal(goalId: Int): Flow<List<GoalCompletionEntity>>
+
+    @Query("UPDATE goal_completions SET completed = :completed WHERE goalId = :goalId AND date = :date")
+    suspend fun updateCompletion(goalId: Int, date: String, completed: Boolean)
 }

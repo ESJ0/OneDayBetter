@@ -111,7 +111,7 @@ fun AddHabitScreen(
                         Icon(
                             imageVector = selectedType.getIconVector(),
                             contentDescription = null,
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     },
                     trailingIcon = {
@@ -143,7 +143,7 @@ fun AddHabitScreen(
                                     Icon(
                                         imageVector = type.getIconVector(),
                                         contentDescription = null,
-                                        tint = Color.Black,
+                                        tint = MaterialTheme.colorScheme.onBackground,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Text(type.getDisplayName())
@@ -182,12 +182,12 @@ fun AddHabitScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .background(
-                                if (isSelected) Color.Black else Color.White,
+                                if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.background,
                                 CircleShape
                             )
                             .border(
                                 1.dp,
-                                if (isSelected) Color.Black else Color.Gray,
+                                if (isSelected) MaterialTheme.colorScheme.onBackground else Color.Gray,
                                 CircleShape
                             )
                             .clickable {
@@ -202,7 +202,7 @@ fun AddHabitScreen(
                         Text(
                             text = day,
                             fontSize = 14.sp,
-                            color = if (isSelected) Color.White else Color.Black,
+                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
                     }
@@ -226,14 +226,15 @@ fun AddHabitScreen(
                 placeholder = { Text("Descripción (opcional)", color = Color.Gray) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(100.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
+                ),
+                maxLines = 4
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
 
             Button(
                 onClick = {
@@ -254,14 +255,14 @@ fun AddHabitScreen(
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black
+                    containerColor = MaterialTheme.colorScheme.onBackground
                 ),
                 enabled = habitName.isNotBlank() && selectedDays.isNotEmpty()
             ) {
                 Text(
                     text = "Agregar hábito",
                     fontSize = 16.sp,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.background
                 )
             }
         }

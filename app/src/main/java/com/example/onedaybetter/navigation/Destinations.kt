@@ -22,3 +22,9 @@ object GoalsList
 
 @Serializable
 object AddGoal
+
+@Serializable
+data class GoalDetail(val goalId: Int)
+
+@Serializable
+object Profile
