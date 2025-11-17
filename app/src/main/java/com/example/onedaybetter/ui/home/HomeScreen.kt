@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Goal
 import com.example.onedaybetter.data.Habit
-import com.example.onedaybetter.ui.habitdetail.getIconVector
+import com.example.onedaybetter.data.getIconVector
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -54,8 +54,10 @@ fun HomeScreen(
     var refreshTrigger by remember { mutableStateOf(0) }
 
     LaunchedEffect(selectedDate, refreshTrigger) {
-        habits = repository.getHabitsForDate(selectedDate)
-        goals = repository.getGoalsForDate(selectedDate)
+        scope.launch {
+            habits = repository.getHabitsForDate(selectedDate)
+            goals = repository.getActiveGoals()
+        }
     }
 
     Scaffold(
@@ -131,7 +133,7 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No hay hábitos ni metas para este día",
+                        text = "No hay hábitos ni metas para mostrar",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
@@ -173,7 +175,7 @@ fun HomeScreen(
 
                         item {
                             Text(
-                                text = "Metas de hoy",
+                                text = "Recordatorio de Metas",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isDark) Color.White else Color.Black
@@ -181,17 +183,10 @@ fun HomeScreen(
                         }
 
                         items(goals) { goal ->
-                            GoalCard(
+                            GoalReminderCard(
                                 goal = goal,
-                                selectedDate = selectedDate,
                                 isDark = isDark,
-                                onToggle = {
-                                    scope.launch {
-                                        repository.toggleGoalCompletion(goal.id, selectedDate)
-                                        goals = repository.getGoalsForDate(selectedDate)
-                                    }
-                                },
-                                onClick = { onNavigateToHabitDetail() }
+                                onClick = { onNavigateToGoals() }
                             )
                         }
                     }
@@ -492,14 +487,12 @@ fun HabitCard(
 }
 
 @Composable
-fun GoalCard(
+fun GoalReminderCard(
     goal: Goal,
-    selectedDate: LocalDate,
     isDark: Boolean,
-    onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
-    val isCompleted = goal.weekProgress.firstOrNull() ?: false
+    val daysUntilTarget = goal.getDaysUntilTarget()
 
     Row(
         modifier = Modifier
@@ -513,15 +506,14 @@ fun GoalCard(
                 if (isDark) Color(0xFF2C2C2E) else Color(0xFFE0E0E0),
                 RoundedCornerShape(12.dp)
             )
+            .clickable { onClick() }
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onClick() }
+            modifier = Modifier.weight(1f)
         ) {
             Box(
                 modifier = Modifier
@@ -549,41 +541,20 @@ fun GoalCard(
                     color = if (isDark) Color.White else Color.Black
                 )
                 Text(
-                    text = "Meta",
+                    text = when {
+                        daysUntilTarget < 0 -> "Meta vencida"
+                        daysUntilTarget == 0 -> "Vence hoy"
+                        daysUntilTarget == 1 -> "Vence mañana"
+                        daysUntilTarget < 7 -> "$daysUntilTarget días restantes"
+                        daysUntilTarget < 30 -> "${daysUntilTarget / 7} semanas restantes"
+                        else -> "${daysUntilTarget / 30} meses restantes"
+                    },
                     fontSize = 11.sp,
-                    color = Color.Gray
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(
-                    if (isCompleted)
-                        if (isDark) Color.White else Color.Black
-                    else
-                        if (isDark) Color(0xFF2C2C2E) else Color.White,
-                    CircleShape
-                )
-                .border(
-                    1.dp,
-                    if (isDark) Color.Gray else Color.Gray,
-                    CircleShape
-                )
-                .clickable(
-                    onClick = { onToggle() },
-                    indication = null,
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isCompleted) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Completado",
-                    tint = if (isDark) Color.Black else Color.White,
-                    modifier = Modifier.size(16.dp)
+                    color = when {
+                        daysUntilTarget < 0 -> Color.Red
+                        daysUntilTarget < 7 -> Color(0xFFFF9800)
+                        else -> Color.Gray
+                    }
                 )
             }
         }

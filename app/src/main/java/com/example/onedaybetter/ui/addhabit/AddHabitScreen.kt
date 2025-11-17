@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.HabitType
-import com.example.onedaybetter.ui.habitdetail.getDisplayName
-import com.example.onedaybetter.ui.habitdetail.getIconVector
+import com.example.onedaybetter.data.getDisplayName
+import com.example.onedaybetter.data.getIconVector
 import com.example.onedaybetter.ui.home.BottomNavigationBar
 import kotlinx.coroutines.launch
 

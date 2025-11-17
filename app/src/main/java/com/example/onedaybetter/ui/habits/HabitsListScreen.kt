@@ -12,13 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Habit
-import com.example.onedaybetter.ui.habitdetail.getIconVector
+import com.example.onedaybetter.data.getIconVector
 import com.example.onedaybetter.ui.home.BottomNavigationBar
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -47,6 +41,9 @@ fun HabitsListScreen(
     val habits by repository.getAllHabits().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val isDark = isSystemInDarkTheme()
+
+    // Key para forzar recomposición cuando cambie algo
+    var refreshKey by remember { mutableStateOf(0) }
 
     // Calcular inicio de semana (domingo)
     val today = LocalDate.now()
@@ -121,7 +118,10 @@ fun HabitsListScreen(
                     Spacer(Modifier.height(8.dp))
                 }
 
-                items(habits) { habit ->
+                items(
+                    items = habits,
+                    key = { it.id }
+                ) { habit ->
                     ModernHabitCard(
                         habit = habit,
                         isDark = isDark,
@@ -135,6 +135,7 @@ fun HabitsListScreen(
                         onDayToggle = { date ->
                             scope.launch {
                                 repository.toggleHabitCompletion(habit.id, date)
+                                refreshKey++ // Forzar actualización
                             }
                         }
                     )
@@ -156,6 +157,20 @@ fun ModernHabitCard(
     onDayToggle: (LocalDate) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val repository = remember { DataRepository.getInstance(context) }
+
+    // Estado para forzar recomposición
+    var localRefresh by remember { mutableStateOf(0) }
+
+    // Recalcular el hábito con las estadísticas actuales
+    var currentHabit by remember(habit.id, localRefresh) { mutableStateOf(habit) }
+
+    LaunchedEffect(habit.id, localRefresh) {
+        repository.getAllHabits().collect { allHabits ->
+            currentHabit = allHabits.find { it.id == habit.id } ?: habit
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -166,7 +181,7 @@ fun ModernHabitCard(
             )
             .padding(16.dp)
     ) {
-        // Header: Nombre del hábito e icono - Ahora clickeable solo esta parte
+        // Header: Nombre del hábito e icono
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -176,7 +191,7 @@ fun ModernHabitCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = habit.name,
+                    text = currentHabit.name,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isDark) Color.White else Color.Black
@@ -185,8 +200,8 @@ fun ModernHabitCard(
                 Spacer(Modifier.height(4.dp))
 
                 val daysText = when {
-                    habit.daysOfWeek.size == 7 -> "Todos los días"
-                    else -> habit.daysOfWeek.joinToString(" - ") { dayNum ->
+                    currentHabit.daysOfWeek.size == 7 -> "Todos los días"
+                    else -> currentHabit.daysOfWeek.joinToString(" - ") { dayNum ->
                         when(dayNum) {
                             1 -> "Lun"
                             2 -> "Mar"
@@ -214,7 +229,7 @@ fun ModernHabitCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = habit.type.getIconVector(),
+                    imageVector = currentHabit.type.getIconVector(),
                     contentDescription = null,
                     tint = if (isDark) Color.White else Color.Black,
                     modifier = Modifier.size(28.dp)
@@ -255,10 +270,10 @@ fun ModernHabitCard(
 
                 // Convertir el día de la semana de Java a nuestro sistema
                 val dayOfWeekNum = if (date.dayOfWeek.value == 7) 7 else date.dayOfWeek.value
-                val isActiveDay = habit.daysOfWeek.contains(dayOfWeekNum)
+                val isActiveDay = currentHabit.daysOfWeek.contains(dayOfWeekNum)
 
                 // Buscar si este día específico está completado
-                val createdDate = LocalDate.ofEpochDay(habit.createdAt / (24 * 60 * 60 * 1000))
+                val createdDate = LocalDate.ofEpochDay(currentHabit.createdAt / (24 * 60 * 60 * 1000))
                 val today = LocalDate.now()
 
                 // Crear un mapeo de fechas a índices en weekProgress
@@ -269,7 +284,7 @@ fun ModernHabitCard(
                 while (!currentDate.isAfter(today)) {
                     val checkDayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
 
-                    if (habit.daysOfWeek.contains(checkDayOfWeek)) {
+                    if (currentHabit.daysOfWeek.contains(checkDayOfWeek)) {
                         dateToIndexMap[currentDate] = index
                         index++
                     }
@@ -279,7 +294,7 @@ fun ModernHabitCard(
                 // Verificar si este día está completado
                 val isCompleted = if (isActiveDay && !date.isBefore(createdDate) && !date.isAfter(today)) {
                     val completionIndex = dateToIndexMap[date]
-                    completionIndex?.let { habit.weekProgress.getOrNull(it) ?: false } ?: false
+                    completionIndex?.let { currentHabit.weekProgress.getOrNull(it) ?: false } ?: false
                 } else {
                     false
                 }
@@ -296,10 +311,11 @@ fun ModernHabitCard(
                             shape = CircleShape
                         )
                         .clickable(
-                            enabled = isActiveDay && !date.isAfter(today),
+                            enabled = isActiveDay && !date.isAfter(today) && !date.isBefore(createdDate),
                             onClick = {
-                                if (isActiveDay && !date.isAfter(today)) {
+                                if (isActiveDay && !date.isAfter(today) && !date.isBefore(createdDate)) {
                                     onDayToggle(date)
+                                    localRefresh++
                                 }
                             }
                         ),
@@ -340,7 +356,7 @@ fun ModernHabitCard(
                 Spacer(Modifier.width(6.dp))
 
                 Text(
-                    text = "${habit.getCompletionPercentage()}%",
+                    text = "${currentHabit.getCompletionPercentage()}%",
                     fontSize = 14.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium

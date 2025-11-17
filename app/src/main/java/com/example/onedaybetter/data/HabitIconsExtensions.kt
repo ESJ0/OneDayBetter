@@ -12,3 +12,21 @@ fun HabitType.getIcon(): String {
         HabitType.VALUE -> "💎"
     }
 }
+
+fun HabitType.getIconVector(): ImageVector {
+    return when(this) {
+        HabitType.EXERCISE -> Icons.Default.DirectionsRun
+        HabitType.SLEEP -> Icons.Default.Bedtime
+        HabitType.FOOD -> Icons.Default.Restaurant
+        HabitType.VALUE -> Icons.Default.Star
+    }
+}
+
+fun HabitType.getDisplayName(): String {
+    return when(this) {
+        HabitType.EXERCISE -> "Ejercicio"
+        HabitType.SLEEP -> "Sueño"
+        HabitType.FOOD -> "Alimentación"
+        HabitType.VALUE -> "Valor"
+    }
+}

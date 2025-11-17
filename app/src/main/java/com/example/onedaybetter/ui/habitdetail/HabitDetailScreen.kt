@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,7 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.Habit
 import com.example.onedaybetter.data.HabitType
-import kotlinx.coroutines.flow.first
+import com.example.onedaybetter.data.getDisplayName
+import com.example.onedaybetter.data.getIconVector
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -211,23 +213,5 @@ fun CircularProgressIndicator(
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
-    }
-}
-
-fun HabitType.getDisplayName(): String {
-    return when(this) {
-        HabitType.EXERCISE -> "Ejercicio"
-        HabitType.SLEEP -> "Sueño"
-        HabitType.FOOD -> "Alimentación"
-        HabitType.VALUE -> "Valor"
-    }
-}
-
-fun HabitType.getIconVector(): androidx.compose.ui.graphics.vector.ImageVector {
-    return when(this) {
-        HabitType.EXERCISE -> androidx.compose.material.icons.Icons.Default.DirectionsRun
-        HabitType.SLEEP -> androidx.compose.material.icons.Icons.Default.Bedtime
-        HabitType.FOOD -> androidx.compose.material.icons.Icons.Default.Restaurant
-        HabitType.VALUE -> androidx.compose.material.icons.Icons.Default.Star
     }
 }

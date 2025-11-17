@@ -1,12 +1,8 @@
 package com.example.onedaybetter.ui.addgoal
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
 import com.example.onedaybetter.data.HabitType
-import com.example.onedaybetter.ui.habitdetail.getDisplayName
-import com.example.onedaybetter.ui.habitdetail.getIconVector
+import com.example.onedaybetter.data.getDisplayName
+import com.example.onedaybetter.data.getIconVector
 import com.example.onedaybetter.ui.home.BottomNavigationBar
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -47,7 +43,6 @@ fun AddGoalScreen(
     var goalDescription by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(HabitType.VALUE) }
     var expanded by remember { mutableStateOf(false) }
-    var selectedDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5, 6, 7)) }
     var selectedDateOption by remember { mutableStateOf("En un mes") }
     var showDateMenu by remember { mutableStateOf(false) }
 
@@ -188,66 +183,6 @@ fun AddGoalScreen(
             Spacer(Modifier.height(24.dp))
 
             Text(
-                text = "Días de la semana",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (isDark) Color.White else Color.Black
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val daysLabels = listOf("L", "M", "X", "J", "V", "S", "D")
-                daysLabels.forEachIndexed { index, day ->
-                    val dayNumber = index + 1
-                    val isSelected = selectedDays.contains(dayNumber)
-
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                if (isSelected)
-                                    if (isDark) Color.White else Color.Black
-                                else
-                                    if (isDark) Color(0xFF000000) else Color.White,
-                                CircleShape
-                            )
-                            .border(
-                                1.dp,
-                                if (isSelected)
-                                    if (isDark) Color.White else Color.Black
-                                else
-                                    if (isDark) Color.Gray else Color.Gray,
-                                CircleShape
-                            )
-                            .clickable {
-                                selectedDays = if (isSelected) {
-                                    selectedDays - dayNumber
-                                } else {
-                                    selectedDays + dayNumber
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = day,
-                            fontSize = 14.sp,
-                            color = if (isSelected)
-                                if (isDark) Color.Black else Color.White
-                            else
-                                if (isDark) Color.White else Color.Black,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            Text(
                 text = "Fecha objetivo",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
@@ -261,9 +196,7 @@ fun AddGoalScreen(
                     value = selectedDateOption,
                     onValueChange = {},
                     readOnly = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDateMenu = true },
+                    modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = { showDateMenu = !showDateMenu }) {
                             Icon(
@@ -342,7 +275,7 @@ fun AddGoalScreen(
 
             Button(
                 onClick = {
-                    if (goalName.isNotBlank() && selectedDays.isNotEmpty()) {
+                    if (goalName.isNotBlank()) {
                         val targetDate = when(selectedDateOption) {
                             "Hoy" -> LocalDate.now()
                             "Mañana" -> LocalDate.now().plusDays(1)
@@ -357,8 +290,7 @@ fun AddGoalScreen(
                                 name = goalName,
                                 type = selectedType,
                                 description = goalDescription,
-                                targetDate = targetDate,
-                                daysOfWeek = selectedDays.toList()
+                                targetDate = targetDate
                             )
                             onGoalAdded()
                         }
@@ -372,7 +304,7 @@ fun AddGoalScreen(
                     containerColor = if (isDark) Color.White else Color.Black,
                     disabledContainerColor = if (isDark) Color.Gray else Color.Gray
                 ),
-                enabled = goalName.isNotBlank() && selectedDays.isNotEmpty()
+                enabled = goalName.isNotBlank()
             ) {
                 Text(
                     text = "Agregar meta",

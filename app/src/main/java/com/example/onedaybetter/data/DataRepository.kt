@@ -52,29 +52,28 @@ data class Goal(
     val type: HabitType,
     val description: String,
     val targetDate: String,
-    val weekProgress: List<Boolean> = List(7) { false },
-    val daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7),
     val createdAt: Long = System.currentTimeMillis()
 ) {
-    fun getCompletionPercentage(): Int {
-        val createdDate = LocalDate.ofEpochDay(createdAt / (24 * 60 * 60 * 1000))
-        val today = LocalDate.now()
-
-        var totalActiveDays = 0
-        var currentDate = createdDate
-
-        while (!currentDate.isAfter(today)) {
-            val dayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
-            if (daysOfWeek.contains(dayOfWeek)) {
-                totalActiveDays++
-            }
-            currentDate = currentDate.plusDays(1)
+    fun isActive(): Boolean {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+            val target = LocalDate.parse(targetDate, formatter)
+            val today = LocalDate.now()
+            !today.isAfter(target)
+        } catch (e: Exception) {
+            false
         }
+    }
 
-        if (totalActiveDays == 0) return 0
-
-        val completedDays = weekProgress.count { it }
-        return (completedDays * 100) / totalActiveDays
+    fun getDaysUntilTarget(): Int {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+            val target = LocalDate.parse(targetDate, formatter)
+            val today = LocalDate.now()
+            java.time.temporal.ChronoUnit.DAYS.between(today, target).toInt()
+        } catch (e: Exception) {
+            0
+        }
     }
 }
 
@@ -89,6 +88,10 @@ class DataRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
 
     private var currentUserEmail: String? = null
+
+    // MutableStateFlow para forzar actualizaciones
+    private val _habitsUpdateTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
+    private val habitsUpdateTrigger = _habitsUpdateTrigger
 
     suspend fun registerUser(email: String, password: String, name: String): Boolean {
         val existing = userDao.getUserByEmail(email)
@@ -169,6 +172,7 @@ class DataRepository(context: Context) {
             val email = getCurrentUserEmail() ?: return@flow
             habitDao.getHabitsByUser(email).collect { entities ->
                 val habits = entities.map { entity ->
+                    // Siempre recalcular las completaciones desde la base de datos
                     val allCompletions = getAllCompletionsForHabit(entity.id)
                     Habit(
                         id = entity.id,
@@ -251,8 +255,7 @@ class DataRepository(context: Context) {
         name: String,
         type: HabitType,
         description: String,
-        targetDate: String,
-        daysOfWeek: List<Int>
+        targetDate: String
     ) {
         val email = getCurrentUserEmail() ?: return
         val goal = GoalEntity(
@@ -261,7 +264,7 @@ class DataRepository(context: Context) {
             type = type.name,
             description = description,
             targetDate = targetDate,
-            daysOfWeek = daysOfWeek.joinToString(","),
+            daysOfWeek = "", // No se usan días de semana
             createdAt = System.currentTimeMillis()
         )
         goalDao.insert(goal)
@@ -277,84 +280,44 @@ class DataRepository(context: Context) {
             val email = getCurrentUserEmail() ?: return@flow
             goalDao.getGoalsByUser(email).collect { entities ->
                 val goals = entities.map { entity ->
-                    val allCompletions = getAllCompletionsForGoal(entity.id)
                     Goal(
                         id = entity.id,
                         name = entity.name,
                         type = HabitType.valueOf(entity.type),
                         description = entity.description,
                         targetDate = entity.targetDate,
-                        weekProgress = allCompletions,
-                        daysOfWeek = entity.daysOfWeek.split(",")
-                            .mapNotNull { it.toIntOrNull() },
                         createdAt = entity.createdAt
                     )
                 }
-                emit(goals)
+                // Filtrar solo las metas activas
+                emit(goals.filter { it.isActive() })
             }
         }
     }
 
-    private suspend fun getAllCompletionsForGoal(goalId: Int): List<Boolean> {
-        val entity = goalDao.getGoalById(goalId) ?: return emptyList()
-        val createdDate = LocalDate.ofEpochDay(entity.createdAt / (24 * 60 * 60 * 1000))
-        val today = LocalDate.now()
-        val daysOfWeek = entity.daysOfWeek.split(",").mapNotNull { it.toIntOrNull() }
-
-        val completions = mutableListOf<Boolean>()
-        var currentDate = createdDate
-
-        while (!currentDate.isAfter(today)) {
-            val dayOfWeek = if (currentDate.dayOfWeek.value == 7) 7 else currentDate.dayOfWeek.value
-            if (daysOfWeek.contains(dayOfWeek)) {
-                val dateStr = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                val completion = goalCompletionDao.getCompletion(goalId, dateStr)
-                completions.add(completion?.completed ?: false)
-            }
-            currentDate = currentDate.plusDays(1)
-        }
-
-        return completions
-    }
-
-    suspend fun getGoalsForDate(date: LocalDate): List<Goal> {
+    suspend fun getActiveGoals(): List<Goal> {
         val email = getCurrentUserEmail() ?: return emptyList()
-        val dayOfWeek = if (date.dayOfWeek.value == 7) 7 else date.dayOfWeek.value
-        val entities = goalDao.getGoalsForDay(email, dayOfWeek).first()
+        val entities = goalDao.getGoalsByUser(email).first()
 
         return entities.map { entity ->
-            val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-            val completion = goalCompletionDao.getCompletion(entity.id, dateStr)
-
             Goal(
                 id = entity.id,
                 name = entity.name,
                 type = HabitType.valueOf(entity.type),
                 description = entity.description,
                 targetDate = entity.targetDate,
-                weekProgress = listOf(completion?.completed ?: false),
-                daysOfWeek = entity.daysOfWeek.split(",")
-                    .mapNotNull { it.toIntOrNull() },
                 createdAt = entity.createdAt
             )
-        }
+        }.filter { it.isActive() }
+    }
+
+    // Métodos que se mantienen para compatibilidad (aunque las metas ya no usan días)
+    suspend fun getGoalsForDate(date: LocalDate): List<Goal> {
+        return getActiveGoals()
     }
 
     suspend fun toggleGoalCompletion(goalId: Int, date: LocalDate) {
-        val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val existing = goalCompletionDao.getCompletion(goalId, dateStr)
-
-        if (existing != null) {
-            goalCompletionDao.updateCompletion(goalId, dateStr, !existing.completed)
-        } else {
-            goalCompletionDao.insert(
-                GoalCompletionEntity(
-                    goalId = goalId,
-                    date = dateStr,
-                    completed = true
-                )
-            )
-        }
+        // Las metas ya no tienen sistema de completado diario
     }
 
     companion object {
