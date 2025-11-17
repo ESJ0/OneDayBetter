@@ -3,9 +3,12 @@ package com.example.onedaybetter.ui.addgoal
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
@@ -37,6 +40,8 @@ fun AddGoalScreen(
     val context = LocalContext.current
     val repository = remember { DataRepository.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val isDark = isSystemInDarkTheme()
+    val scrollState = rememberScrollState()
 
     var goalName by remember { mutableStateOf("") }
     var goalDescription by remember { mutableStateOf("") }
@@ -47,6 +52,7 @@ fun AddGoalScreen(
     var showDateMenu by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = if (isDark) Color(0xFF000000) else Color.White,
         bottomBar = {
             BottomNavigationBar(
                 selectedTab = 2,
@@ -63,13 +69,14 @@ fun AddGoalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(scrollState)
                 .padding(24.dp)
         ) {
             Text(
                 text = "Define tu meta",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(32.dp))
@@ -78,7 +85,7 @@ fun AddGoalScreen(
                 text = "Meta",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -86,11 +93,20 @@ fun AddGoalScreen(
             OutlinedTextField(
                 value = goalName,
                 onValueChange = { goalName = it },
-                placeholder = { Text("Nombre de la meta", color = Color.Gray) },
+                placeholder = {
+                    Text(
+                        "Nombre de la meta",
+                        color = if (isDark) Color.Gray else Color.Gray
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    focusedTextColor = if (isDark) Color.White else Color.Black,
+                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                    focusedBorderColor = if (isDark) Color.White else Color.Black,
+                    unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    cursorColor = if (isDark) Color.White else Color.Black
                 )
             )
 
@@ -100,7 +116,7 @@ fun AddGoalScreen(
                 text = "Tipo de meta",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -115,20 +131,24 @@ fun AddGoalScreen(
                         Icon(
                             imageVector = selectedType.getIconVector(),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onBackground
+                            tint = if (isDark) Color.White else Color.Black
                         )
                     },
                     trailingIcon = {
                         IconButton(onClick = { expanded = !expanded }) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = if (isDark) Color.White else Color.Black
                             )
                         }
                     },
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        focusedTextColor = if (isDark) Color.White else Color.Black,
+                        unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                        focusedBorderColor = if (isDark) Color.White else Color.Black,
+                        unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                 )
 
@@ -147,10 +167,13 @@ fun AddGoalScreen(
                                     Icon(
                                         imageVector = type.getIconVector(),
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground,
+                                        tint = if (isDark) Color.White else Color.Black,
                                         modifier = Modifier.size(24.dp)
                                     )
-                                    Text(type.getDisplayName())
+                                    Text(
+                                        type.getDisplayName(),
+                                        color = if (isDark) Color.White else Color.Black
+                                    )
                                 }
                             },
                             onClick = {
@@ -168,7 +191,7 @@ fun AddGoalScreen(
                 text = "Días de la semana",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -186,12 +209,18 @@ fun AddGoalScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .background(
-                                if (isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.background,
+                                if (isSelected)
+                                    if (isDark) Color.White else Color.Black
+                                else
+                                    if (isDark) Color(0xFF000000) else Color.White,
                                 CircleShape
                             )
                             .border(
                                 1.dp,
-                                if (isSelected) MaterialTheme.colorScheme.onBackground else Color.Gray,
+                                if (isSelected)
+                                    if (isDark) Color.White else Color.Black
+                                else
+                                    if (isDark) Color.Gray else Color.Gray,
                                 CircleShape
                             )
                             .clickable {
@@ -206,7 +235,10 @@ fun AddGoalScreen(
                         Text(
                             text = day,
                             fontSize = 14.sp,
-                            color = if (isSelected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground,
+                            color = if (isSelected)
+                                if (isDark) Color.Black else Color.White
+                            else
+                                if (isDark) Color.White else Color.Black,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
                     }
@@ -219,7 +251,7 @@ fun AddGoalScreen(
                 text = "Fecha objetivo",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -236,13 +268,17 @@ fun AddGoalScreen(
                         IconButton(onClick = { showDateMenu = !showDateMenu }) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = if (isDark) Color.White else Color.Black
                             )
                         }
                     },
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        focusedTextColor = if (isDark) Color.White else Color.Black,
+                        unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                        focusedBorderColor = if (isDark) Color.White else Color.Black,
+                        unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                 )
 
@@ -253,7 +289,12 @@ fun AddGoalScreen(
                 ) {
                     listOf("Hoy", "Mañana", "En una semana", "En un mes", "En 3 meses").forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(option) },
+                            text = {
+                                Text(
+                                    option,
+                                    color = if (isDark) Color.White else Color.Black
+                                )
+                            },
                             onClick = {
                                 selectedDateOption = option
                                 showDateMenu = false
@@ -269,7 +310,7 @@ fun AddGoalScreen(
                 text = "Descripción",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -277,13 +318,22 @@ fun AddGoalScreen(
             OutlinedTextField(
                 value = goalDescription,
                 onValueChange = { goalDescription = it },
-                placeholder = { Text("Descripción (opcional)", color = Color.Gray) },
+                placeholder = {
+                    Text(
+                        "Descripción (opcional)",
+                        color = if (isDark) Color.Gray else Color.Gray
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    focusedTextColor = if (isDark) Color.White else Color.Black,
+                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                    focusedBorderColor = if (isDark) Color.White else Color.Black,
+                    unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    cursorColor = if (isDark) Color.White else Color.Black
                 ),
                 maxLines = 4
             )
@@ -319,16 +369,19 @@ fun AddGoalScreen(
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = if (isDark) Color.White else Color.Black,
+                    disabledContainerColor = if (isDark) Color.Gray else Color.Gray
                 ),
                 enabled = goalName.isNotBlank() && selectedDays.isNotEmpty()
             ) {
                 Text(
                     text = "Agregar meta",
                     fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.background
+                    color = if (isDark) Color.Black else Color.White
                 )
             }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }

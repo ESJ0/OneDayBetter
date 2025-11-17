@@ -1,8 +1,11 @@
 package com.example.onedaybetter.ui.login
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -27,6 +30,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { DataRepository.getInstance(context) }
     val scope = rememberCoroutineScope()
+    val isDark = isSystemInDarkTheme()
+    val scrollState = rememberScrollState()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -36,26 +41,24 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = if (isDark) Color(0xFF000000) else Color.White
     ) {
-        Spacer(Modifier.height(40.dp))
-
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Top
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(40.dp))
+
             Text(
                 text = "OneDayBetter",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(80.dp))
@@ -64,7 +67,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 text = if (isRegisterMode) "Crear cuenta" else "Iniciar sesión",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = if (isDark) Color.White else Color.Black
             )
 
             Spacer(Modifier.height(8.dp))
@@ -75,7 +78,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 else
                     "Ingresa tus credenciales",
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
             )
 
             Spacer(Modifier.height(24.dp))
@@ -87,11 +90,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         name = it
                         errorMessage = null
                     },
-                    placeholder = { Text("Nombre") },
+                    placeholder = {
+                        Text(
+                            "Nombre",
+                            color = if (isDark) Color.Gray else Color.Gray
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        focusedTextColor = if (isDark) Color.White else Color.Black,
+                        unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                        focusedBorderColor = if (isDark) Color.White else Color.Black,
+                        unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        cursorColor = if (isDark) Color.White else Color.Black
                     ),
                     enabled = !isLoading
                 )
@@ -105,11 +117,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     email = it
                     errorMessage = null
                 },
-                placeholder = { Text("email@domain.com") },
+                placeholder = {
+                    Text(
+                        "email@domain.com",
+                        color = if (isDark) Color.Gray else Color.Gray
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    focusedTextColor = if (isDark) Color.White else Color.Black,
+                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                    focusedBorderColor = if (isDark) Color.White else Color.Black,
+                    unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    cursorColor = if (isDark) Color.White else Color.Black
                 ),
                 enabled = !isLoading,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
@@ -123,11 +144,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     password = it
                     errorMessage = null
                 },
-                placeholder = { Text("Contraseña") },
+                placeholder = {
+                    Text(
+                        "Contraseña",
+                        color = if (isDark) Color.Gray else Color.Gray
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    focusedTextColor = if (isDark) Color.White else Color.Black,
+                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                    focusedBorderColor = if (isDark) Color.White else Color.Black,
+                    unfocusedBorderColor = if (isDark) Color.Gray else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    cursorColor = if (isDark) Color.White else Color.Black
                 ),
                 enabled = !isLoading,
                 visualTransformation = if (passwordVisible)
@@ -142,7 +172,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                                 Icons.Default.Visibility
                             else
                                 Icons.Default.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                            contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
+                            tint = if (isDark) Color.Gray else Color.Gray
                         )
                     }
                 }
@@ -162,7 +193,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Button(
                 onClick = {
                     if (isRegisterMode) {
-                        // Registro
                         if (name.isBlank()) {
                             errorMessage = "El nombre es requerido"
                             return@Button
@@ -190,7 +220,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                             isLoading = false
                         }
                     } else {
-                        // Login
                         if (!email.contains("@")) {
                             errorMessage = "Email inválido"
                             return@Button
@@ -217,20 +246,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black
+                    containerColor = if (isDark) Color.White else Color.Black
                 ),
                 enabled = !isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        color = Color.White,
+                        color = if (isDark) Color.Black else Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
                     Text(
                         text = if (isRegisterMode) "Crear cuenta" else "Iniciar sesión",
                         fontSize = 16.sp,
-                        color = Color.White
+                        color = if (isDark) Color.Black else Color.White
                     )
                 }
             }
@@ -250,7 +279,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     else
                         "¿No tienes cuenta? Regístrate",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isDark) Color.White else MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -259,7 +288,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Text(
                 text = "o",
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                color = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
             )
 
             Spacer(Modifier.height(24.dp))
@@ -271,7 +300,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color(0xFFF5F5F5)
+                    containerColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5)
                 ),
                 enabled = !isLoading
             ) {
@@ -289,7 +318,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     Text(
                         text = "Continuar con Google",
                         fontSize = 16.sp,
-                        color = Color.Black
+                        color = if (isDark) Color.White else Color.Black
                     )
                 }
             }
@@ -303,7 +332,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color(0xFFF5F5F5)
+                    containerColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5)
                 ),
                 enabled = !isLoading
             ) {
@@ -315,50 +344,54 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         text = "",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = if (isDark) Color.White else Color.Black
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "Continuar con Apple",
                         fontSize = 16.sp,
-                        color = Color.Black
+                        color = if (isDark) Color.White else Color.Black
                     )
                 }
             }
-        }
 
-        Column {
-            Row(
-                modifier = Modifier.padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.Center
+            Spacer(Modifier.height(32.dp))
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Al continuar, aceptas nuestros ",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = "Términos de Servicio",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    textDecoration = TextDecoration.Underline
-                )
-            }
-            Row(
-                modifier = Modifier.padding(bottom = 16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "y ",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = "Política de Privacidad",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                    textDecoration = TextDecoration.Underline
-                )
+                Row(
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Al continuar, aceptas nuestros ",
+                        fontSize = 12.sp,
+                        color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "Términos de Servicio",
+                        fontSize = 12.sp,
+                        color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f),
+                        textDecoration = TextDecoration.Underline
+                    )
+                }
+                Row(
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "y ",
+                        fontSize = 12.sp,
+                        color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "Política de Privacidad",
+                        fontSize = 12.sp,
+                        color = if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f),
+                        textDecoration = TextDecoration.Underline
+                    )
+                }
             }
         }
     }

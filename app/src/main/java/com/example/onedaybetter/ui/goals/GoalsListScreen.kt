@@ -77,17 +77,19 @@ fun GoalsListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAddGoal,
-                containerColor = if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5),
-                contentColor = if (isDark) Color.White else Color.Black,
-                shape = CircleShape
+                containerColor = if (isDark) Color.White else Color.Black,
+                contentColor = if (isDark) Color.Black else Color.White,
+                shape = CircleShape,
+                modifier = Modifier.size(56.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Agregar meta",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
-        }
+        },
+        floatingActionButtonPosition = FabPosition.End
     ) { padding ->
         if (goals.isEmpty()) {
             Box(

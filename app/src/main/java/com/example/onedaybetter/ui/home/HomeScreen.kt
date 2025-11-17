@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onedaybetter.data.DataRepository
+import com.example.onedaybetter.data.Goal
 import com.example.onedaybetter.data.Habit
 import com.example.onedaybetter.ui.habitdetail.getIconVector
 import kotlinx.coroutines.launch
@@ -47,10 +48,14 @@ fun HomeScreen(
 
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var habits by remember { mutableStateOf<List<Habit>>(emptyList()) }
+    var goals by remember { mutableStateOf<List<Goal>>(emptyList()) }
     var showCalendarDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selectedDate) {
+    var refreshTrigger by remember { mutableStateOf(0) }
+
+    LaunchedEffect(selectedDate, refreshTrigger) {
         habits = repository.getHabitsForDate(selectedDate)
+        goals = repository.getGoalsForDate(selectedDate)
     }
 
     Scaffold(
@@ -120,43 +125,79 @@ fun HomeScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            Text(
-                text = "Hábitos de hoy",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color.White else Color.Black
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            if (habits.isEmpty()) {
+            if (habits.isEmpty() && goals.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No hay hábitos para este día",
+                        text = "No hay hábitos ni metas para este día",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(habits) { habit ->
-                        HabitCard(
-                            habit = habit,
-                            selectedDate = selectedDate,
-                            isDark = isDark,
-                            onToggle = {
-                                scope.launch {
-                                    repository.toggleHabitCompletion(habit.id, selectedDate)
-                                    habits = repository.getHabitsForDate(selectedDate)
-                                }
-                            },
-                            onClick = { onNavigateToHabitDetail() }
-                        )
+                    if (habits.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Hábitos de hoy",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color.White else Color.Black
+                            )
+                        }
+
+                        items(habits) { habit ->
+                            HabitCard(
+                                habit = habit,
+                                selectedDate = selectedDate,
+                                isDark = isDark,
+                                onToggle = {
+                                    scope.launch {
+                                        repository.toggleHabitCompletion(habit.id, selectedDate)
+                                        habits = repository.getHabitsForDate(selectedDate)
+                                    }
+                                },
+                                onClick = { onNavigateToHabitDetail() }
+                            )
+                        }
+                    }
+
+                    if (goals.isNotEmpty()) {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        item {
+                            Text(
+                                text = "Metas de hoy",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color.White else Color.Black
+                            )
+                        }
+
+                        items(goals) { goal ->
+                            GoalCard(
+                                goal = goal,
+                                selectedDate = selectedDate,
+                                isDark = isDark,
+                                onToggle = {
+                                    scope.launch {
+                                        repository.toggleGoalCompletion(goal.id, selectedDate)
+                                        goals = repository.getGoalsForDate(selectedDate)
+                                    }
+                                },
+                                onClick = { onNavigateToHabitDetail() }
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
             }
@@ -402,11 +443,117 @@ fun HabitCard(
 
             Spacer(Modifier.width(12.dp))
 
-            Text(
-                text = habit.name,
-                fontSize = 14.sp,
-                color = if (isDark) Color.White else Color.Black
+            Column {
+                Text(
+                    text = habit.name,
+                    fontSize = 14.sp,
+                    color = if (isDark) Color.White else Color.Black
+                )
+                Text(
+                    text = "Hábito",
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(
+                    if (isCompleted)
+                        if (isDark) Color.White else Color.Black
+                    else
+                        if (isDark) Color(0xFF2C2C2E) else Color.White,
+                    CircleShape
+                )
+                .border(
+                    1.dp,
+                    if (isDark) Color.Gray else Color.Gray,
+                    CircleShape
+                )
+                .clickable(
+                    onClick = { onToggle() },
+                    indication = null,
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCompleted) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Completado",
+                    tint = if (isDark) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GoalCard(
+    goal: Goal,
+    selectedDate: LocalDate,
+    isDark: Boolean,
+    onToggle: () -> Unit,
+    onClick: () -> Unit
+) {
+    val isCompleted = goal.weekProgress.firstOrNull() ?: false
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (isDark) Color(0xFF1C1C1E) else Color.White,
+                RoundedCornerShape(12.dp)
             )
+            .border(
+                1.dp,
+                if (isDark) Color(0xFF2C2C2E) else Color(0xFFE0E0E0),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onClick() }
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        if (isDark) Color(0xFF2C2C2E) else Color(0xFFF5F5F5),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = goal.type.getIconVector(),
+                    contentDescription = null,
+                    tint = if (isDark) Color.White else Color.Black,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = goal.name,
+                    fontSize = 14.sp,
+                    color = if (isDark) Color.White else Color.Black
+                )
+                Text(
+                    text = "Meta",
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
         }
 
         Box(
